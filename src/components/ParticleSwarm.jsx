@@ -9,15 +9,25 @@ const ParticleSwarm = ({ darkMode }) => {
   // Create geometry and initial data
   const points = useMemo(() => {
     const p = new Float32Array(count * 3);
+    const initialP = new Float32Array(count * 3); // Store initial positions
     const c = new Float32Array(count * 3);
     const s = new Float32Array(count); // Speeds
     for (let i = 0; i < count; i++) {
-      p[i * 3] = (Math.random() - 0.5) * 500;
-      p[i * 3 + 1] = (Math.random() - 0.5) * 500;
-      p[i * 3 + 2] = (Math.random() - 0.5) * 500;
-      s[i] = 0.5 + Math.random() * 2.5; // Slightly wider speed range
+      const x = (Math.random() - 0.5) * 600;
+      const y = (Math.random() - 0.5) * 600;
+      const z = (Math.random() - 0.5) * 600;
+      
+      p[i * 3] = x;
+      p[i * 3 + 1] = y;
+      p[i * 3 + 2] = z;
+      
+      initialP[i * 3] = x;
+      initialP[i * 3 + 1] = y;
+      initialP[i * 3 + 2] = z;
+      
+      s[i] = 0.5 + Math.random() * 2.5;
     }
-    return { positions: p, colors: c, speeds: s };
+    return { positions: p, initialPositions: initialP, colors: c, speeds: s };
   }, [count]);
 
   useEffect(() => {
@@ -52,11 +62,11 @@ const ParticleSwarm = ({ darkMode }) => {
     const texture = new THREE.CanvasTexture(canvas);
 
     const material = new THREE.PointsMaterial({
-      size: 1.5, // Slightly larger for more 'fill'
+      size: 2.2, // Boosted size for visibility
       map: texture,
       vertexColors: true,
       transparent: true,
-      opacity: 1.0, // Maximum opacity
+      opacity: 1.0, 
       blending: THREE.AdditiveBlending,
       depthTest: false,
     });
@@ -70,43 +80,42 @@ const ParticleSwarm = ({ darkMode }) => {
 
     const animate = () => {
       requestAnimationFrame(animate);
-      time += 0.002; // Slightly faster but still smooth
+      time += 0.0015; // Smooth slow motion
 
       const positions = geometry.attributes.position.array;
       const colors = geometry.attributes.color.array;
 
-      const mx = mouse.current.x * 250;
-      const my = mouse.current.y * 250;
+      const mx = mouse.current.x * 300;
+      const my = mouse.current.y * 300;
 
       for (let i = 0; i < count; i++) {
         const i3 = i * 3;
         
-        // --- MAXIMIZED LIQUEFIED SCATTER ---
-        const strandId = i % 120; 
+        // --- STABLE ORGANIC SCATTER ---
         const t = time * points.speeds[i] + (i * 0.005);
         
-        // Very wide base scatter
-        const xInitial = ((i % 200) / 200 - 0.5) * 1600; 
-        const yInitial = (Math.floor(i / 200) / (count/200) - 0.5) * 1200;
+        // Use stable initial positions
+        const xInitial = points.initialPositions[i3] * 3.0; 
+        const yInitial = points.initialPositions[i3 + 1] * 2.2;
         
-        // Aggressive liquefied offsets (Curl-like motion)
-        const noiseScale = 0.003;
-        const driftX = Math.sin(yInitial * noiseScale + t) * 200;
-        const driftY = Math.cos(xInitial * noiseScale - t) * 200;
-        const driftZ = Math.sin(t * 0.8 + i * 0.001) * 400;
+        // Isotropic liquefied offsets (Fluid motion)
+        const noiseScale = 0.004;
+        const driftX = Math.sin(yInitial * noiseScale + t) * 150;
+        const driftY = Math.cos(xInitial * noiseScale - t) * 150;
+        const driftZ = Math.sin(t * 0.6 + i * 0.001) * 200;
         
         let x = xInitial + driftX;
         let y = yInitial + driftY;
-        let z = driftZ;
+        let z = points.initialPositions[i3 + 2] + driftZ;
 
-        // Interaction: High-impact mouse distortion
+        // Interaction: Balanced mouse distortion
         const dx = x - mx;
         const dy = y - my;
         const d = Math.sqrt(dx * dx + dy * dy);
         if (d < 350) {
           const force = (350 - d) / 350;
-          x += dx * force * 1.5;
-          y += dy * force * 1.5;
+          x += dx * force * 1.3;
+          y += dy * force * 1.3;
         }
 
         positions[i3] = x;
@@ -114,23 +123,19 @@ const ParticleSwarm = ({ darkMode }) => {
         positions[i3 + 2] = z;
 
         // --- INTENSE FIERY COLORING ---
-        // Increase red/orange saturation
-        const heat = Math.abs(Math.sin(t * 0.4 + i * 0.0001));
+        const heat = Math.abs(Math.sin(t * 0.3 + i * 0.0001));
         
-        if (heat > 0.5) {
-          // Glow Orange-Yellow
-          color.setRGB(1, 0.4 + heat * 0.4, 0.1); 
-        } else if (heat > 0.2) {
-          // Intense Studio Red
+        if (heat > 0.6) {
+          color.setRGB(1, 0.3 + heat * 0.4, 0.1); 
+        } else if (heat > 0.3) {
           color.setRGB(1, 0, 0); 
         } else {
-          // Deep Crimson (Bad Company Brand)
-          color.setRGB(0.8, 0.1, 0.1); 
+          color.setRGB(0.7, 0.1, 0.1); 
         }
         
-        // Distance-based fade
-        const distFromCenter = Math.sqrt(x*x + y*y) / 600;
-        const opacity = Math.max(0, 1.2 - distFromCenter);
+        // Soft edge fade
+        const distFromCenter = Math.sqrt(x*x + y*y) / 800;
+        const opacity = Math.max(0, 1.3 - distFromCenter);
         
         colors[i3] = color.r * opacity;
         colors[i3 + 1] = color.g * opacity;
