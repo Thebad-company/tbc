@@ -4,7 +4,7 @@ import * as THREE from 'three';
 const ParticleSwarm = ({ darkMode }) => {
   const mountRef = useRef(null);
   const mouse = useRef({ x: 0, y: 0 });
-  const count = 60000;
+  const count = 150000;
   
   // Create geometry and initial data
   const points = useMemo(() => {
@@ -15,7 +15,7 @@ const ParticleSwarm = ({ darkMode }) => {
       p[i * 3] = (Math.random() - 0.5) * 500;
       p[i * 3 + 1] = (Math.random() - 0.5) * 500;
       p[i * 3 + 2] = (Math.random() - 0.5) * 500;
-      s[i] = 0.5 + Math.random() * 2;
+      s[i] = 0.5 + Math.random() * 2.5; // Slightly wider speed range
     }
     return { positions: p, colors: c, speeds: s };
   }, [count]);
@@ -37,46 +37,26 @@ const ParticleSwarm = ({ darkMode }) => {
     geometry.setAttribute('position', new THREE.BufferAttribute(points.positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(points.colors, 3));
 
-    // Create a glowing star texture
+    // Create a glowing soft dot texture
     const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
+    canvas.width = 32;
+    canvas.height = 32;
     const ctx = canvas.getContext('2d');
+    const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.8)');
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 32, 32);
     
-    const drawStar = (cx, cy, spikes, outerRadius, innerRadius) => {
-      let rot = Math.PI / 2 * 3;
-      let x = cx;
-      let y = cy;
-      let step = Math.PI / spikes;
-
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - outerRadius);
-      for (let i = 0; i < spikes; i++) {
-        x = cx + Math.cos(rot) * outerRadius;
-        y = cy + Math.sin(rot) * outerRadius;
-        ctx.lineTo(x, y);
-        rot += step;
-
-        x = cx + Math.cos(rot) * innerRadius;
-        y = cy + Math.sin(rot) * innerRadius;
-        ctx.lineTo(x, y);
-        rot += step;
-      }
-      ctx.lineTo(cx, cy - outerRadius);
-      ctx.closePath();
-      ctx.fillStyle = 'white';
-      ctx.fill();
-    };
-
-    drawStar(32, 32, 5, 25, 10);
     const texture = new THREE.CanvasTexture(canvas);
 
     const material = new THREE.PointsMaterial({
-      size: 2.2,
+      size: 1.5, // Slightly larger for more 'fill'
       map: texture,
       vertexColors: true,
       transparent: true,
-      opacity: 0.85,
+      opacity: 1.0, // Maximum opacity
       blending: THREE.AdditiveBlending,
       depthTest: false,
     });
@@ -90,63 +70,67 @@ const ParticleSwarm = ({ darkMode }) => {
 
     const animate = () => {
       requestAnimationFrame(animate);
-      time += 0.0015; // Slower time increment
+      time += 0.002; // Slightly faster but still smooth
 
       const positions = geometry.attributes.position.array;
       const colors = geometry.attributes.color.array;
 
-      const mx = mouse.current.x * 200;
-      const my = mouse.current.y * 200;
+      const mx = mouse.current.x * 250;
+      const my = mouse.current.y * 250;
 
       for (let i = 0; i < count; i++) {
         const i3 = i * 3;
         
-        // --- MAXIMIZED SCATTER FLOW ---
-        // Instead of a single circle, we use a wide, noisy base distribution
-        const strandId = i % 150; // More strands
+        // --- MAXIMIZED LIQUEFIED SCATTER ---
+        const strandId = i % 120; 
         const t = time * points.speeds[i] + (i * 0.005);
         
         // Very wide base scatter
-        const xInitial = ((i % 200) / 200 - 0.5) * 1400; 
-        const yInitial = (Math.floor(i / 200) / (count/200) - 0.5) * 1000;
+        const xInitial = ((i % 200) / 200 - 0.5) * 1600; 
+        const yInitial = (Math.floor(i / 200) / (count/200) - 0.5) * 1200;
         
-        // Noisy liquefied offsets
-        const noiseScale = 0.002;
-        const driftX = Math.sin(yInitial * noiseScale + t) * 150;
-        const driftY = Math.cos(xInitial * noiseScale - t) * 150;
-        const driftZ = Math.sin(t * 0.5 + i * 0.001) * 300;
+        // Aggressive liquefied offsets (Curl-like motion)
+        const noiseScale = 0.003;
+        const driftX = Math.sin(yInitial * noiseScale + t) * 200;
+        const driftY = Math.cos(xInitial * noiseScale - t) * 200;
+        const driftZ = Math.sin(t * 0.8 + i * 0.001) * 400;
         
         let x = xInitial + driftX;
         let y = yInitial + driftY;
         let z = driftZ;
 
-        // Interaction: Stronger mouse pull/push
+        // Interaction: High-impact mouse distortion
         const dx = x - mx;
         const dy = y - my;
         const d = Math.sqrt(dx * dx + dy * dy);
-        if (d < 300) {
-          const force = (300 - d) / 300;
-          x += dx * force * 1.2;
-          y += dy * force * 1.2;
+        if (d < 350) {
+          const force = (350 - d) / 350;
+          x += dx * force * 1.5;
+          y += dy * force * 1.5;
         }
 
         positions[i3] = x;
         positions[i3 + 1] = y;
         positions[i3 + 2] = z;
 
-        // --- CINEMATIC COLORING (Red/Orange/Yellow Glow) ---
-        // Map distance and time to a fiery palette
-        const heat = Math.abs(Math.sin(t * 0.2 + i * 0.0001));
+        // --- INTENSE FIERY COLORING ---
+        // Increase red/orange saturation
+        const heat = Math.abs(Math.sin(t * 0.4 + i * 0.0001));
         
-        if (heat > 0.6) {
-          color.setRGB(1, 0.2 + heat * 0.5, 0); // Yellow-Orange
+        if (heat > 0.5) {
+          // Glow Orange-Yellow
+          color.setRGB(1, 0.4 + heat * 0.4, 0.1); 
+        } else if (heat > 0.2) {
+          // Intense Studio Red
+          color.setRGB(1, 0, 0); 
         } else {
-          color.setRGB(0.86, 0.15, 0.15); // The Bad Company Red
+          // Deep Crimson (Bad Company Brand)
+          color.setRGB(0.8, 0.1, 0.1); 
         }
         
-        // Fade out based on distance from center for a soft edge
-        const distFromCenter = Math.sqrt(x*x + y*y) / 400;
-        const opacity = Math.max(0, 1 - distFromCenter);
+        // Distance-based fade
+        const distFromCenter = Math.sqrt(x*x + y*y) / 600;
+        const opacity = Math.max(0, 1.2 - distFromCenter);
         
         colors[i3] = color.r * opacity;
         colors[i3 + 1] = color.g * opacity;
