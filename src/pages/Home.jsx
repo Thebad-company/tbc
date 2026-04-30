@@ -20,9 +20,6 @@ const Hero = () => {
   const { darkMode } = useOutletContext();
   return (
     <section className="relative pt-40 pb-20 px-6 overflow-hidden min-h-screen flex flex-col items-center justify-center text-center">
-      {/* 3D Particle Swarm Background */}
-      <ParticleSwarm darkMode={darkMode} />
-
       <div className="radial-glow relative z-10"></div>
     <motion.div
       initial={{ opacity: 0, y: 20 }}
